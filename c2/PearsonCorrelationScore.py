@@ -25,7 +25,12 @@ def pcs(data, person_a, person_b):
 
     # 计算皮尔逊相关度
     num = p_sum - (sum_a * sum_b / n)
-    den = sqrt((sum_a_sq - pow(sum_a, 2) / n) * (sum_b_sq - pow(sum_b, 2) / n))
+
+    result = (sum_a_sq - pow(sum_a, 2) / n) * (sum_b_sq - pow(sum_b, 2) / n)
+    if result <= 0:
+        return 0
+
+    den = sqrt(result)
     if den == 0:
         return 0
 
