@@ -1,4 +1,5 @@
 from c3 import Score
+import random
 
 
 class bicluster:
@@ -49,50 +50,58 @@ def hcluster(rows, dis=Score.pcs):
     return cluster[0]
 
 
-def ahcluster(rows, distance=Score.pcs):
-    distances = {}
-    currentclustid = -1
+def kmeans_cluster(rows, dis=Score.pcs, k=4):
+    # 列的个数
+    col_num = len(rows[0])
+    row_num = len(rows)
+    # 计算每一列的值域
+    col_ranges = [(min([row[col_idx] for row in rows]), max([row[col_idx] for row in rows]))
+                  for col_idx in range(col_num)]
+    # 随机k个聚类
+    clusters = [
+        [
+            random.random() * (col_ranges[col_idx][1] - col_ranges[col_idx][0]) + col_ranges[col_idx][0]
+            for col_idx in range(col_num)
+        ]
+        for kidx in range(k)
+    ]
 
-    # Clusters are initially just the rows
-    clust = [bicluster(rows[i], uuid=i) for i in range(len(rows))]
+    last_best_match = None
+    try_time = 0
+    while try_time < 100:
+        try_time += 1
 
-    while len(clust) > 1:
-        lowestpair = (0, 1)
-        closest = distance(clust[0].vec, clust[1].vec)
+        best_match = [[] for i in range(k)]
+        best_match_k = 0
+        for row_idx in range(row_num):
+            for kidx in range(1, k):
+                temp_dis = dis(rows[row_idx], clusters[kidx])
+                if temp_dis < dis(rows[row_idx], clusters[best_match_k]):
+                    best_match_k = kidx
+            best_match[best_match_k].append(row_idx)
 
-        # loop through every pair looking for the smallest distance
-        for i in range(len(clust)):
-            for j in range(i + 1, len(clust)):
-                # distances is the cache of distance calculations
-                if (clust[i].uuid, clust[j].uuid) not in distances:
-                    distances[(clust[i].uuid, clust[j].uuid)] = distance(clust[i].vec, clust[j].vec)
+        if last_best_match == best_match:
+            break
 
-                d = distances[(clust[i].uuid, clust[j].uuid)]
+        last_best_match = best_match
 
-                if d < closest:
-                    closest = d
-                    lowestpair = (i, j)
+        for kidx in range(k):
+            # avgs先用于统计总量，再进行平均计算
+            avgs = [0.0] * col_num
+            for row_idx in best_match[kidx]:
+                for col_idx in range(col_num):
+                    avgs[col_idx] += rows[row_idx][col_idx]
 
-        # calculate the average of the two clusters
-        mergevec = [
-            (clust[lowestpair[0]].vec[i] + clust[lowestpair[1]].vec[i]) / 2.0
-            for i in range(len(clust[0].vec))]
+            # 对每个数据进行平均计算
+            for col_idx in range(col_num):
+                bm_num = len(best_match[kidx])
+                if bm_num > 0:
+                    avgs[col_idx] /= bm_num
 
-        # create the new cluster
-        newcluster = bicluster(mergevec, left=clust[lowestpair[0]],
-                               right=clust[lowestpair[1]],
-                               distance=closest, uuid=currentclustid)
+            # 用新的均值替换原来的数据
+            clusters[kidx] = avgs
 
-        # cluster ids that weren't in the original set are negative
-        currentclustid -= 1
-        del clust[lowestpair[1]]
-        del clust[lowestpair[0]]
-        clust.append(newcluster)
-
-    return clust[0]
-
-
-# def kmeans_cluster(row, dis=Score.pcs, k=4):
+    return clusters
 
 
 # 矩阵转置
