@@ -100,7 +100,7 @@ def hill_climbing(domain, cost_func=schedule_cost):
 
 
 # 退火法
-def simulated_annealing(domain, cost_func=schedule_cost, T=1000, cool_rate=0.95, step=20):
+def simulated_annealing(domain, cost_func=schedule_cost, T=1000, cool_rate=0.95, step=1):
     try_result = [random.randint(domain[idx][0], domain[idx][1]) for idx in range(len(domain))]
     score = cost_func(try_result)
     while T > 0.1:
@@ -123,3 +123,54 @@ def simulated_annealing(domain, cost_func=schedule_cost, T=1000, cool_rate=0.95,
         T *= cool_rate
 
     return score, try_result
+
+
+# 遗传算法
+def genetic_algorithms(domain, cost_func=schedule_cost, population_size=50, step=1, mutate_rate=0.2, elite_rate=0.2,
+                       generation_num=100):
+    domain_len = len(domain)
+
+    # 变异
+    def mutate(population):
+        idx = random.randint(0, domain_len - 1)
+        if random.random() < 0.5 and population[idx] > domain[idx][0]:
+            return population[0:idx] + [population[idx] - step] + population[idx + 1:]
+        elif population[idx] < domain[idx][1]:
+            return population[0:idx] + [population[idx] + step] + population[idx + 1:]
+        return population[0:idx] + [population[idx] - step] + population[idx + 1:]
+
+    # 交叉
+    def crossover(p1, p2):
+        idx = random.randint(0, domain_len - 2)
+        return p1[0:idx] + p2[idx:]
+
+    # 初始种群
+    populations = []
+    for idx in range(population_size):
+        temp_population = [random.randint(domain[idx][0], domain[idx][1]) for idx in range(len(domain))]
+        populations.append(temp_population)
+
+    # 每代留下的个数
+    generation_elite_size = int(elite_rate * population_size)
+
+    best_score = 0
+    # 开始算法
+    for current_generation_no in range(generation_num):
+        # 计算及排序分数
+        scores = [(cost_func(population), population) for population in populations]
+        scores.sort()
+
+        # 选出优胜的种群
+        populations = [population for (score, population) in scores[0:generation_elite_size]]
+        best_score = scores[0][0]
+
+        while len(populations) < population_size:
+            if random.random() < mutate_rate:
+                idx = random.randint(0, generation_elite_size - 1)
+                populations.append(mutate(populations[idx]))
+            else:
+                idx1 = random.randint(0, generation_elite_size - 1)
+                idx2 = random.randint(0, generation_elite_size - 1)
+                populations.append(crossover(populations[idx1], populations[idx2]))
+
+    return best_score, populations[0]
