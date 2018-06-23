@@ -1,5 +1,5 @@
 from c5 import data
-import random, copy
+import random, math
 
 
 def print_schedule(r, people=data.people, flights=data.flights, destination="LGA"):
@@ -77,18 +77,17 @@ def hill_climbing(domain, cost_func=schedule_cost):
         neighbors = []
         for idx in range(len(try_result)):
             if try_result[idx] > domain[idx][0]:
-                tmp = copy.deepcopy(try_result)
+                tmp = try_result[:]
                 tmp[idx] -= 1
                 neighbors.append(tmp)
             if try_result[idx] < domain[idx][1]:
-                tmp = copy.deepcopy(try_result)
+                tmp = try_result[:]
                 tmp[idx] += 1
                 neighbors.append(tmp)
 
         unchange = True
         for idx in range(len(neighbors)):
             neighbors_cost = cost_func(neighbors[idx])
-            # print("neighbors_cost ", idx, neighbors[idx])
             if neighbors_cost < best_score:
                 best_score = neighbors_cost
                 try_result = neighbors[idx]
@@ -98,3 +97,29 @@ def hill_climbing(domain, cost_func=schedule_cost):
             break
 
     return best_score, try_result
+
+
+# 退火法
+def simulated_annealing(domain, cost_func=schedule_cost, T=1000, cool_rate=0.95, step=20):
+    try_result = [random.randint(domain[idx][0], domain[idx][1]) for idx in range(len(domain))]
+    score = cost_func(try_result)
+    while T > 0.1:
+        idx = random.randint(0, len(try_result) - 1)
+        current_step = random.randint(-step, step)
+        temp_result = try_result[:]
+
+        temp_result[idx] += current_step
+        if domain[idx][0] > temp_result[idx]:
+            temp_result[idx] = domain[idx][0]
+        elif domain[idx][1] < temp_result[idx]:
+            temp_result[idx] = domain[idx][1]
+
+        temp_score = cost_func(temp_result)
+        # print(temp_score, score)
+        if temp_score < score or random.random() < pow(math.e, (score - temp_score) / T):
+            try_result = temp_result
+            score = temp_score
+
+        T *= cool_rate
+
+    return score, try_result
